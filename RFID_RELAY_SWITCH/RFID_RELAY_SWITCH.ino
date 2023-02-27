@@ -24,7 +24,7 @@
 *******************************************************************************/
 #include <SPI.h>
 #include <MFRC522.h>   
-#include<avr/wdt.h>
+#include <avr/wdt.h>
 /*******************************************************************************
 *                          Type & Macro Definitions
 *******************************************************************************/
@@ -38,9 +38,9 @@
 *******************************************************************************/
 MFRC522 mfrc522(SDA_PIN, RST_PIN); //Create new MFRC522 object
 boolean System_On = false;
-byte ActualUID[4];                        //This will store the ID each time we read RFID tag
-byte USER1[4]= {0x83, 0x42, 0x7B, 0xA9} ; //Master ID code 
-//byte USER1[4]= {0x23, 0x8C, 0x0A, 0xA6} ; //Master ID code 
+byte ActualUID[4];                          // This will store the ID each time we read RFID tag
+byte USER1[4]= {0x83, 0x42, 0x7B, 0xA9} ;   // Authorized User ID code 
+//byte USER1[4]= {0x23, 0x8C, 0x0A, 0xA6} ; // Authorized User ID code 
 
 uint32_t time_prev = 0;       
 /*******************************************************************************
@@ -71,10 +71,10 @@ void setup() {
   
   pinMode(relay_pin,OUTPUT);    //Set digital pin D7 to be the buzzer OUTPUT
   relay_switch_off();
-  #ifdef SERIAL_DEBUG_DEBUG
+  #ifdef SERIAL_DEBUG
   (System_On) ? SERIAL_DEBUG.println(F("System ON")) : SERIAL_DEBUG.println(F("System OFF"));
   SERIAL_DEBUG.println(F("Enter Card"));
-  #endif // SERIAL_DEBUG_DEBUG
+  #endif // SERIAL_DEBUG
 
   wdt_disable(); //Disable WDT
   delay(3000);
@@ -96,28 +96,28 @@ void loop() {
               for (byte i = 0; i < mfrc522.uid.size; i++) {
                 ActualUID[i] = mfrc522.uid.uidByte[i];       
               } 
-                #ifdef SERIAL_DEBUG_DEBUG
+                #ifdef SERIAL_DEBUG
                 SERIAL_DEBUG.println(F("\nThe UID tag is:"));
                 SERIAL_DEBUG.print(F("In hex: "));
                 SERIAL_DEBUG.print(" 0x");SERIAL_DEBUG.print(ActualUID[0],HEX);  
                 SERIAL_DEBUG.print(" 0x");SERIAL_DEBUG.print(ActualUID[1],HEX);
                 SERIAL_DEBUG.print(" 0x");SERIAL_DEBUG.print(ActualUID[2],HEX);
                 SERIAL_DEBUG.print(" 0x");SERIAL_DEBUG.println(ActualUID[3],HEX);
-                #endif // SERIAL_DEBUG_DEBUG
+                #endif // SERIAL_DEBUG
               //Compare the UID and default User1
               if(compareArray(ActualUID,USER1))
               {
                   System_On = !(System_On); // oFF -> ON // ON -> OFF
-                  (System_On) ? relay_switch_off() : relay_switch_on();
-                  #ifdef SERIAL_DEBUG_DEBUG
+                  (System_On) ? relay_switch_on() : relay_switch_off();
+                  #ifdef SERIAL_DEBUG
                   (System_On) ? SERIAL_DEBUG.println(F("System ON")) : SERIAL_DEBUG.println(F("System OFF"));
-                  #endif // SERIAL_DEBUG_DEBUG
+                  #endif // SERIAL_DEBUG
               }
               else
               {
-                #ifdef SERIAL_DEBUG_DEBUG
+                #ifdef SERIAL_DEBUG
                 SERIAL_DEBUG.println(F("...Invalid User..."));
-                #endif // SERIAL_DEBUG_DEBUG
+                #endif // SERIAL_DEBUG
               }
             // Halt PICC
             mfrc522.PICC_HaltA();
@@ -128,9 +128,9 @@ void loop() {
       }
       else
       {
-        #ifdef SERIAL_DEBUG_DEBUG
+        #ifdef SERIAL_DEBUG
         SERIAL_DEBUG.print(F("."));
-        #endif // SERIAL_DEBUG_DEBUG
+        #endif // SERIAL_DEBUG
       }
     }
   
