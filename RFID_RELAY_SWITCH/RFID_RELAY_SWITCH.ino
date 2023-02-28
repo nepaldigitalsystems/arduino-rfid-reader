@@ -51,9 +51,12 @@ MFRC522 RFID_RELAY_MRFC522(RFID_RELAY_SDA_PIN, RFID_RELAY_RST_PIN); //Create new
 byte RFID_RELAY_read_uuid[RFID_RELAY_SIZE_RFID];                        //This will store the ID each time we read RFID tag
 
 #ifdef RFID_RELAY_DEVICE1
-byte RFID_RELAY_ID_DEV[RFID_RELAY_SIZE_RFID] = {0x83, 0x42, 0x7B, 0xA9} ; //Master ID code 
+byte RFID_RELAY_ID_DEV_CARD[RFID_RELAY_SIZE_RFID] = {0xB3, 0x81, 0xA7, 0xA9};
+byte RFID_RELAY_ID_DEV_TAG[RFID_RELAY_SIZE_RFID] = {0xA3, 0x27, 0x77, 0xA6};
 #else if RFID_RELAY_DEVICE2
-byte RFID_RELAY_ID_DEV[RFID_RELAY_SIZE_RFID] = {0x23, 0x8C, 0x0A, 0xA6} ; //Master ID code
+byte RFID_RELAY_ID_DEV_CARD[RFID_RELAY_SIZE_RFID] = {0x83, 0x42, 0x7B, 0xA9};
+byte RFID_RELAY_ID_DEV_TAG[RFID_RELAY_SIZE_RFID] = {0x23, 0x8C, 0x0A, 0xA6};
+
 #endif 
 
 uint32_t RFID_RELAY_rfid_read_timekeeper_past_event = 0;       
@@ -157,7 +160,8 @@ void loop() {
                 RFID_RELAY_SERIAL_DEBUG.print(" 0x");RFID_RELAY_SERIAL_DEBUG.println(RFID_RELAY_read_uuid[3],HEX);
                 #endif // RFID_RELAY_SERIAL_DEBUG
               //Compare the UID and default User1
-              if(RFID_RELAY_compare_ids(RFID_RELAY_read_uuid,RFID_RELAY_ID_DEV))
+              if(RFID_RELAY_compare_ids(RFID_RELAY_read_uuid,RFID_RELAY_ID_DEV_TAG) 
+                                        || RFID_RELAY_compare_ids(RFID_RELAY_read_uuid,RFID_RELAY_ID_DEV_CARD))
               {              
                   if(rfid_relay_status == RELAY_STAT_ON) {
                      RFID_RELAY_relay_switch_off();
