@@ -24,7 +24,7 @@
 *******************************************************************************/
 #include <SPI.h>
 #include <MFRC522.h>   
-#include<avr/wdt.h>
+#include <avr/wdt.h>
 #include <EEPROM.h>
 /*******************************************************************************
 *                          Type & Macro Definitions
@@ -47,7 +47,7 @@ typedef enum {
 } RFID_RELAY_STAT;
 
 MFRC522 RFID_RELAY_MRFC522(RFID_RELAY_SDA_PIN, RFID_RELAY_RST_PIN); //Create new MFRC522 object
-boolean RFID_RELAY_RELAY_STAT = false;
+//boolean RFID_RELAY_RELAY_STAT = false;
 byte RFID_RELAY_read_uuid[RFID_RELAY_SIZE_RFID];                        //This will store the ID each time we read RFID tag
 
 #ifdef RFID_RELAY_DEVICE1
@@ -107,15 +107,16 @@ void setup() {
   SPI.begin();                              //Start a new SPI bus
   RFID_RELAY_MRFC522.PCD_Init();            //Start the MFRC522  
   
-  pinMode(RFID_RELAY_RELAY_PIN,OUTPUT);     //Set digital pin D7 to be the buzzer OUTPUT
-  RFID_RELAY_relay_switch_off();
-  #ifdef RFID_RELAY_SERIAL_DEBUG
-  (RFID_RELAY_RELAY_STAT) ? RFID_RELAY_SERIAL_DEBUG.println(F("System ON")) : RFID_RELAY_SERIAL_DEBUG.println(F("System OFF"));
-  RFID_RELAY_SERIAL_DEBUG.println(F("Enter Card"));
-  #endif // RFID_RELAY_SERIAL_DEBUG
+  pinMode(RFID_RELAY_RELAY_PIN, OUTPUT);     //Set digital pin D7 to be the buzzer OUTPU
 
   rfid_relay_status = (RFID_RELAY_STAT)EEPROM.read(RFID_RELAY_STAT_ADDR);
-
+  
+  #ifdef RFID_RELAY_SERIAL_DEBUG
+  RFID_RELAY_SERIAL_DEBUG.print("Rfid Relay Status: ");
+  if(rfid_relay_status == RELAY_STAT_OFF) RFID_RELAY_SERIAL_DEBUG.println("OFF");
+  else RFID_RELAY_SERIAL_DEBUG.println("ON");
+  #endif // RFID_RELAY_SERIAL_DEBUG
+  
   if(rfid_relay_status == RELAY_STAT_OFF) {
     RFID_RELAY_relay_switch_off();
   } else {
@@ -157,10 +158,8 @@ void loop() {
                 #endif // RFID_RELAY_SERIAL_DEBUG
               //Compare the UID and default User1
               if(RFID_RELAY_compare_ids(RFID_RELAY_read_uuid,RFID_RELAY_ID_DEV))
-              {
-                  RFID_RELAY_RELAY_STAT = !(RFID_RELAY_RELAY_STAT); // oFF -> ON // ON -> OFF
-                  
-                  if(RFID_RELAY_RELAY_STAT) {
+              {              
+                  if(rfid_relay_status == RELAY_STAT_ON) {
                      RFID_RELAY_relay_switch_off();
                      rfid_relay_status = RELAY_STAT_OFF;                  
                    } else  {
@@ -170,8 +169,10 @@ void loop() {
 
                   EEPROM.update(RFID_RELAY_STAT_ADDR, (uint8_t)rfid_relay_status);
 
-                  #ifdef RFID_RELAY_SERIAL_DEBUG
-                  (RFID_RELAY_RELAY_STAT) ? RFID_RELAY_SERIAL_DEBUG.println(F("System ON")) : RFID_RELAY_SERIAL_DEBUG.println(F("System OFF"));
+                  #ifdef RFID_RELAY_SERIAL_DEBUG      
+                  RFID_RELAY_SERIAL_DEBUG.print("Rfid Relay Status: ");            
+                  if(rfid_relay_status == RELAY_STAT_OFF) RFID_RELAY_SERIAL_DEBUG.println("OFF");
+                  else RFID_RELAY_SERIAL_DEBUG.println("ON");
                   #endif // RFID_RELAY_SERIAL_DEBUG
               }
               else
