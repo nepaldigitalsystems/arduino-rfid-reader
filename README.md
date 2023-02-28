@@ -29,8 +29,6 @@ To contribute to this project, follow these steps:
 4. Push to the original branch: `git push origin <project_name>/<location>`
 5. Create a pull request.
 
-Please see the [Contributing Guidelines](CONTRIBUTING.md) for more information.
-
 ## License
 
 This project is licensed under the [MIT License](LICENSE).```

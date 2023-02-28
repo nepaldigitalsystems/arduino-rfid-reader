@@ -25,29 +25,52 @@
 #include <SPI.h>
 #include <MFRC522.h>   
 #include<avr/wdt.h>
+#include <EEPROM.h>
 /*******************************************************************************
 *                          Type & Macro Definitions
 *******************************************************************************/
-#define relay_pin                     8
-#define RST_PIN                       9    //Pin 9 is for the RC522 reset
-#define SDA_PIN                       10   //Pin 10 is the SDA (SDA) of RC522 module
-#define RFID_CHECK_INTERVAL           1000
-#define SERIAL_DEBUG                  Serial
+#define RFID_RELAY_RELAY_PIN                     8
+#define RFID_RELAY_RST_PIN                       9    //Pin 9 is for the RC522 reset
+#define RFID_RELAY_SDA_PIN                       10   //Pin 10 is the SDA (SDA) of RC522 module
+#define RFID_RELAY_RFID_CHECK_INTERVAL           1000
+#define RFID_RELAY_SERIAL_DEBUG                  Serial
+#define RFID_RELAY_SIZE_RFID                     4
+#define RFID_RELAY_STAT_ADDR                     0                    
+#define RFID_RELAY_DEVICE1
+// #define RFID_RELAY_DEVICE2
 /*******************************************************************************
 *                          Static Data Definitions
 *******************************************************************************/
-MFRC522 mfrc522(SDA_PIN, RST_PIN); //Create new MFRC522 object
-boolean System_On = false;
-byte ActualUID[4];                        //This will store the ID each time we read RFID tag
-byte USER1[4]= {0x83, 0x42, 0x7B, 0xA9} ; //Master ID code 
-//byte USER1[4]= {0x23, 0x8C, 0x0A, 0xA6} ; //Master ID code 
+typedef enum {
+  RELAY_STAT_OFF,
+  RELAY_STAT_ON
+} RFID_RELAY_STAT;
 
-uint32_t time_prev = 0;       
+MFRC522 RFID_RELAY_MRFC522(RFID_RELAY_SDA_PIN, RFID_RELAY_RST_PIN); //Create new MFRC522 object
+boolean RFID_RELAY_RELAY_STAT = false;
+byte RFID_RELAY_read_uuid[RFID_RELAY_SIZE_RFID];                        //This will store the ID each time we read RFID tag
+
+#ifdef RFID_RELAY_DEVICE1
+byte RFID_RELAY_ID_DEV[RFID_RELAY_SIZE_RFID] = {0x83, 0x42, 0x7B, 0xA9} ; //Master ID code 
+#elif RFID_RELAY_DEVICE2
+byte RFID_RELAY_ID_DEV[RFID_RELAY_SIZE_RFID] = {0x23, 0x8C, 0x0A, 0xA6} ; //Master ID code
+#endif 
+
+uint32_t RFID_RELAY_rfid_read_timekeeper_past_event = 0;       
+
+RFID_RELAY_STAT rfid_relay_status = RELAY_STAT_OFF;
+
 /*******************************************************************************
 *                          Static Function Definitions
 *******************************************************************************/
-//Compare the 4 bytes of the users and the received ID
-boolean compareArray(byte array1[],byte array2[])
+/**
+ * @brief Compare the 4 bytes of the users and the received ID
+ * 
+ * @param array1 First array with 4 byte RFID 
+ * @param array2 Second array with 4 byte RFID
+ * @return boolean True if matched False if not matched 
+ */
+boolean RFID_RELAY_compare_ids(byte array1[], byte array2[])
 {
   if(array1[0] != array2[0])return(false);
   if(array1[1] != array2[1])return(false);
@@ -55,85 +78,122 @@ boolean compareArray(byte array1[],byte array2[])
   if(array1[3] != array2[3])return(false);
   return(true);
 }
-void relay_switch_on() {
-  digitalWrite(relay_pin, LOW);
+
+/**
+ * @brief Turn ON the Relay connected to \ref RFID_RELAY_RELAY_PIN
+ * 
+ */
+void RFID_RELAY_relay_switch_on() {
+  digitalWrite(RFID_RELAY_RELAY_PIN, LOW);
 }
 
-void relay_switch_off() {
-  digitalWrite(relay_pin, HIGH);
+/**
+ * @brief Turn OFF the Relay connected to \ref RFID_RELAY_RELAY_PIN
+ * 
+ */
+void RFID_RELAY_relay_switch_off() {
+  digitalWrite(RFID_RELAY_RELAY_PIN, HIGH);
 }
-//-----------------------------------------------------------------------------------------
+
+/**
+ * @brief Arduino Setup function
+ * Here we write the statement to be executed only once when program starts
+ * 
+ */
+
 void setup() {
 
-  SERIAL_DEBUG.begin(9600);
-  SPI.begin();                  //Start a new SPI bus
-  mfrc522.PCD_Init();           //Start the MFRC522  
+  RFID_RELAY_SERIAL_DEBUG.begin(9600);
+  SPI.begin();                              //Start a new SPI bus
+  RFID_RELAY_MRFC522.PCD_Init();            //Start the MFRC522  
   
-  pinMode(relay_pin,OUTPUT);    //Set digital pin D7 to be the buzzer OUTPUT
-  relay_switch_off();
-  #ifdef SERIAL_DEBUG_DEBUG
-  (System_On) ? SERIAL_DEBUG.println(F("System ON")) : SERIAL_DEBUG.println(F("System OFF"));
-  SERIAL_DEBUG.println(F("Enter Card"));
-  #endif // SERIAL_DEBUG_DEBUG
+  pinMode(RFID_RELAY_RELAY_PIN,OUTPUT);     //Set digital pin D7 to be the buzzer OUTPUT
+  RFID_RELAY_relay_switch_off();
+  #ifdef RFID_RELAY_SERIAL_DEBUG
+  (RFID_RELAY_RELAY_STAT) ? RFID_RELAY_SERIAL_DEBUG.println(F("System ON")) : RFID_RELAY_SERIAL_DEBUG.println(F("System OFF"));
+  RFID_RELAY_SERIAL_DEBUG.println(F("Enter Card"));
+  #endif // RFID_RELAY_SERIAL_DEBUG
+
+  rfid_relay_status = (RFID_RELAY_STAT)EEPROM.read(RFID_RELAY_STAT_ADDR);
+
+  if(rfid_relay_status == RELAY_STAT_OFF) {
+    RFID_RELAY_relay_switch_off();
+  } else {
+    RFID_RELAY_relay_switch_on();
+  }
 
   wdt_disable(); //Disable WDT
   delay(3000);
   wdt_enable(WDTO_2S); //Enable WDT with a timeout of 2 seconds
 }
-//-----------------------------------------------------------------------------------------
+
+/**
+ * @brief Arduino Loop function
+ * This function is a forever (infinite loop), here we write the 
+ * statements to be executed for all the time.
+ */
 void loop() {
     
-    if((millis() - time_prev) >= RFID_CHECK_INTERVAL) 
+    if((millis() - RFID_RELAY_rfid_read_timekeeper_past_event) >= RFID_RELAY_RFID_CHECK_INTERVAL) 
     {
-      time_prev = millis();
+      RFID_RELAY_rfid_read_timekeeper_past_event = millis();
       // Check if there are any new ID card in front of the sensor
-      if (mfrc522.PICC_IsNewCardPresent()) 
+      if (RFID_RELAY_MRFC522.PICC_IsNewCardPresent()) 
       {  
         //Select the found card
-        if ( mfrc522.PICC_ReadCardSerial()) 
+        if ( RFID_RELAY_MRFC522.PICC_ReadCardSerial()) 
         {     
               // We store the read ID into 4 bytes with a for loop and display them                 
-              for (byte i = 0; i < mfrc522.uid.size; i++) {
-                ActualUID[i] = mfrc522.uid.uidByte[i];       
+              for (uint8_t i = 0; i < RFID_RELAY_MRFC522.uid.size; i++) {
+                RFID_RELAY_read_uuid[i] = RFID_RELAY_MRFC522.uid.uidByte[i];       
               } 
-                #ifdef SERIAL_DEBUG_DEBUG
-                SERIAL_DEBUG.println(F("\nThe UID tag is:"));
-                SERIAL_DEBUG.print(F("In hex: "));
-                SERIAL_DEBUG.print(" 0x");SERIAL_DEBUG.print(ActualUID[0],HEX);  
-                SERIAL_DEBUG.print(" 0x");SERIAL_DEBUG.print(ActualUID[1],HEX);
-                SERIAL_DEBUG.print(" 0x");SERIAL_DEBUG.print(ActualUID[2],HEX);
-                SERIAL_DEBUG.print(" 0x");SERIAL_DEBUG.println(ActualUID[3],HEX);
-                #endif // SERIAL_DEBUG_DEBUG
+                #ifdef RFID_RELAY_SERIAL_DEBUG
+                RFID_RELAY_SERIAL_DEBUG.println(F("\nThe UID tag is:"));
+                RFID_RELAY_SERIAL_DEBUG.print(F("In hex: "));
+                RFID_RELAY_SERIAL_DEBUG.print(" 0x");RFID_RELAY_SERIAL_DEBUG.print(RFID_RELAY_read_uuid[0],HEX);  
+                RFID_RELAY_SERIAL_DEBUG.print(" 0x");RFID_RELAY_SERIAL_DEBUG.print(RFID_RELAY_read_uuid[1],HEX);
+                RFID_RELAY_SERIAL_DEBUG.print(" 0x");RFID_RELAY_SERIAL_DEBUG.print(RFID_RELAY_read_uuid[2],HEX);
+                RFID_RELAY_SERIAL_DEBUG.print(" 0x");RFID_RELAY_SERIAL_DEBUG.println(RFID_RELAY_read_uuid[3],HEX);
+                #endif // RFID_RELAY_SERIAL_DEBUG
               //Compare the UID and default User1
-              if(compareArray(ActualUID,USER1))
+              if(RFID_RELAY_compare_ids(RFID_RELAY_read_uuid,RFID_RELAY_ID_DEV))
               {
-                  System_On = !(System_On); // oFF -> ON // ON -> OFF
-                  (System_On) ? relay_switch_off() : relay_switch_on();
-                  #ifdef SERIAL_DEBUG_DEBUG
-                  (System_On) ? SERIAL_DEBUG.println(F("System ON")) : SERIAL_DEBUG.println(F("System OFF"));
-                  #endif // SERIAL_DEBUG_DEBUG
+                  RFID_RELAY_RELAY_STAT = !(RFID_RELAY_RELAY_STAT); // oFF -> ON // ON -> OFF
+                  
+                  if(RFID_RELAY_RELAY_STAT) {
+                     RFID_RELAY_relay_switch_off();
+                     rfid_relay_status = RELAY_STAT_OFF;                  
+                   } else  {
+                     RFID_RELAY_relay_switch_on();
+                     rfid_relay_status = RELAY_STAT_ON;
+                   }
+
+                  EEPROM.update(RFID_RELAY_STAT_ADDR, (uint8_t)rfid_relay_status);
+
+                  #ifdef RFID_RELAY_SERIAL_DEBUG
+                  (RFID_RELAY_RELAY_STAT) ? RFID_RELAY_SERIAL_DEBUG.println(F("System ON")) : RFID_RELAY_SERIAL_DEBUG.println(F("System OFF"));
+                  #endif // RFID_RELAY_SERIAL_DEBUG
               }
               else
               {
-                #ifdef SERIAL_DEBUG_DEBUG
-                SERIAL_DEBUG.println(F("...Invalid User..."));
-                #endif // SERIAL_DEBUG_DEBUG
+                #ifdef RFID_RELAY_SERIAL_DEBUG
+                RFID_RELAY_SERIAL_DEBUG.println(F("...Invalid User..."));
+                #endif // RFID_RELAY_SERIAL_DEBUG
               }
             // Halt PICC
-            mfrc522.PICC_HaltA();
+            RFID_RELAY_MRFC522.PICC_HaltA();
             // Stop encryption on PCD
-            mfrc522.PCD_StopCrypto1();                          
+            RFID_RELAY_MRFC522.PCD_StopCrypto1();                          
         }
           
       }
       else
       {
-        #ifdef SERIAL_DEBUG_DEBUG
-        SERIAL_DEBUG.print(F("."));
-        #endif // SERIAL_DEBUG_DEBUG
+        #ifdef RFID_RELAY_SERIAL_DEBUG
+        RFID_RELAY_SERIAL_DEBUG.print(F("."));
+        #endif // RFID_RELAY_SERIAL_DEBUG
       }
-    }
-  
+    }  
   wdt_reset(); //Reset the watchdog
 }
 /*******************************************************************************
