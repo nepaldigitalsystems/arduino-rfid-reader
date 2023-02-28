@@ -36,8 +36,8 @@
 #define RFID_RELAY_SERIAL_DEBUG                  Serial
 #define RFID_RELAY_SIZE_RFID                     4
 #define RFID_RELAY_STAT_ADDR                     0                    
-#define RFID_RELAY_DEVICE1
-// #define RFID_RELAY_DEVICE2
+// #define RFID_RELAY_DEVICE1
+#define RFID_RELAY_DEVICE2
 /*******************************************************************************
 *                          Static Data Definitions
 *******************************************************************************/
@@ -52,7 +52,7 @@ byte RFID_RELAY_read_uuid[RFID_RELAY_SIZE_RFID];                        //This w
 
 #ifdef RFID_RELAY_DEVICE1
 byte RFID_RELAY_ID_DEV[RFID_RELAY_SIZE_RFID] = {0x83, 0x42, 0x7B, 0xA9} ; //Master ID code 
-#elif RFID_RELAY_DEVICE2
+#else if RFID_RELAY_DEVICE2
 byte RFID_RELAY_ID_DEV[RFID_RELAY_SIZE_RFID] = {0x23, 0x8C, 0x0A, 0xA6} ; //Master ID code
 #endif 
 
